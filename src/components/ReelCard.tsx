@@ -77,10 +77,27 @@ export function ReelCard({ video, isActive, isMuted, onToggleMute }: ReelCardPro
     e.preventDefault();
     e.stopPropagation();
 
+    setDebugInfo("Tapped!");
+
     if (isPlaying) {
       pauseVideo();
     } else {
       playVideo();
+    }
+  };
+
+  // Separate handler for touch devices
+  const handleTouchStart = (e: React.TouchEvent) => {
+    // Only handle single touch
+    if (e.touches.length === 1) {
+      e.preventDefault();
+      setDebugInfo("Touch detected");
+
+      if (isPlaying) {
+        pauseVideo();
+      } else {
+        playVideo();
+      }
     }
   };
 
@@ -163,12 +180,12 @@ export function ReelCard({ video, isActive, isMuted, onToggleMute }: ReelCardPro
         } as any}
       />
 
-      {/* Tap overlay - using both onClick and onTouchEnd for broader compatibility */}
+      {/* Tap overlay - onTouchStart for iOS, onClick for desktop */}
       <div
         className="absolute inset-0 z-20"
         onClick={handleTap}
-        onTouchEnd={handleTap}
-        style={{ WebkitTapHighlightColor: 'transparent' }}
+        onTouchStart={handleTouchStart}
+        style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
       />
 
       {/* Play Button Overlay */}
