@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { cn } from "@/utils/cn";
 import { PlayIcon, VolumeIcon, MuteIcon } from "./Icons";
 
@@ -19,80 +19,73 @@ export function ReelCard({ video, isActive, isMuted, onToggleMute }: ReelCardPro
   const posterUrl = video.url.replace(/\.mp4$/, ".jpg");
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [showPlayIcon, setShowPlayIcon] = useState(false);
-  const [hasInteracted, setHasInteracted] = useState(false);
+  const [showPlayIcon, setShowPlayIcon] = useState(true); // Always show initially on iOS
+
+  // Handle video ready state
+  const handleCanPlayThrough = useCallback(() => {
+    console.log("Video can play through");
+  }, []);
+
+  const handleLoadedData = useCallback(() => {
+    console.log("Video loaded data");
+  }, []);
+
+  // Attempt to play video with iOS fallbacks
+  const attemptPlay = useCallback(async (videoEl: HTMLVideoElement) => {
+    try {
+      // Ensure video is muted for autoplay (iOS requirement)
+      videoEl.muted = true;
+
+      // Load the video first (important for iOS)
+      if (videoEl.readyState < 3) {
+        videoEl.load();
+        await new Promise<void>((resolve) => {
+          const onCanPlay = () => {
+            videoEl.removeEventListener('canplaythrough', onCanPlay);
+            resolve();
+          };
+          videoEl.addEventListener('canplaythrough', onCanPlay);
+          // Timeout fallback
+          setTimeout(resolve, 3000);
+        });
+      }
+
+      await videoEl.play();
+      setIsPlaying(true);
+      setShowPlayIcon(false);
+
+      // If parent state says unmuted, try to unmute after play starts
+      if (!isMuted) {
+        videoEl.muted = false;
+      }
+    } catch (error: any) {
+      console.error("Autoplay failed:", error);
+      setShowPlayIcon(true);
+      setIsPlaying(false);
+    }
+  }, [isMuted]);
 
   useEffect(() => {
     const videoEl = videoRef.current;
     if (!videoEl) return;
 
     if (isActive) {
-      // Promise handling for play()
-      const playPromise = videoEl.play();
-      if (playPromise !== undefined) {
-        playPromise
-          .then(() => setIsPlaying(true))
-          .catch((error) => {
-            // Check if the component is still active before attempting fallback
-            if (!isActive) return;
-
-            if (error.name === "AbortError") {
-              // AbortError means the play request was interrupted (e.g., by pausing).
-              // We should ignore this error as it's expected behavior during scrolling.
-              return;
-            }
-
-            console.log("Autoplay failed with error:", error);
-            setShowPlayIcon(true);
-
-            // Handle browser autoplay policy prevention
-            if (error.name === "NotAllowedError") {
-              // Fallback: Mute and play.
-              videoEl.muted = true;
-              videoEl.play()
-                .then(() => {
-                  if (!isActive) {
-                    videoEl.pause();
-                    return;
-                  }
-                  setIsPlaying(true);
-                  // Update state to reflect we are now muted
-                  if (!isMuted) {
-                    onToggleMute();
-                  }
-                })
-                .catch((err) => {
-                  console.error("Autoplay failed even with mute:", err);
-                  setShowPlayIcon(true);
-                });
-            }
-          });
-      }
+      attemptPlay(videoEl);
     } else {
       videoEl.pause();
       videoEl.currentTime = 0;
       setIsPlaying(false);
+      setShowPlayIcon(true);
     }
-  }, [isActive]);
+  }, [isActive, attemptPlay]);
 
   useEffect(() => {
-    if (videoRef.current) {
+    if (videoRef.current && isPlaying) {
       videoRef.current.muted = isMuted;
     }
-  }, [isMuted]);
+  }, [isMuted, isPlaying]);
 
-  const handleFirstInteraction = () => {
-    if (!hasInteracted) {
-      setHasInteracted(true);
-      // Unmute on first interaction
-      if (isMuted) {
-        onToggleMute();
-      }
-    }
-  };
-
-  const togglePlay = () => {
-    handleFirstInteraction();
+  const togglePlay = async () => {
     const videoEl = videoRef.current;
     if (!videoEl) return;
 
@@ -101,12 +94,25 @@ export function ReelCard({ video, isActive, isMuted, onToggleMute }: ReelCardPro
       setIsPlaying(false);
       setShowPlayIcon(true);
     } else {
-      videoEl.play().then(() => {
+      try {
+        // For user-initiated play, we can try unmuted
+        videoEl.muted = isMuted;
+        await videoEl.play();
         setIsPlaying(true);
         setShowPlayIcon(false);
-      }).catch((error) => {
+      } catch (error) {
         console.error("Play failed:", error);
-      });
+        // Fallback to muted play
+        try {
+          videoEl.muted = true;
+          await videoEl.play();
+          setIsPlaying(true);
+          setShowPlayIcon(false);
+          if (!isMuted) onToggleMute(); // Sync state
+        } catch (e) {
+          console.error("Play failed even muted:", e);
+        }
+      }
     }
   };
 
@@ -119,25 +125,37 @@ export function ReelCard({ video, isActive, isMuted, onToggleMute }: ReelCardPro
 
   return (
     <div className="relative h-full w-full bg-black">
-      {/* Video - Contained to show full video without cropping */}
+      {/* Video - iOS compatible attributes */}
       <video
         ref={videoRef}
         src={video.url}
-        className="absolute inset-0 h-full w-full object-contain pointer-events-auto"
+        className="absolute inset-0 h-full w-full object-contain"
         loop
         playsInline
+        autoPlay
+        muted
         preload="auto"
         poster={posterUrl}
-        muted={isMuted}
-        onClick={togglePlay}
         onTimeUpdate={handleTimeUpdate}
+        onCanPlayThrough={handleCanPlayThrough}
+        onLoadedData={handleLoadedData}
+        // @ts-ignore - webkit prefix for older iOS
+        webkit-playsinline="true"
+        // @ts-ignore - x5 for Android WebView
+        x5-playsinline="true"
+        x5-video-player-type="h5"
       />
 
-      {/* Play/Pause Overlay */}
+      {/* Transparent tap overlay for play/pause - always present */}
+      <div
+        className="absolute inset-0 z-20 cursor-pointer"
+        onClick={togglePlay}
+      />
+
+      {/* Play Icon Overlay */}
       {showPlayIcon && !isPlaying && isActive && (
         <div
-          className="absolute inset-0 z-30 flex items-center justify-center bg-black/10 cursor-pointer"
-          onClick={togglePlay}
+          className="absolute inset-0 z-30 flex items-center justify-center bg-black/10 pointer-events-none"
         >
           <div className="rounded-full bg-black/40 p-5 backdrop-blur-sm">
             <PlayIcon className="h-16 w-16 text-white" />
