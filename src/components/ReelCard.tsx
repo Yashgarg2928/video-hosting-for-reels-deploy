@@ -42,6 +42,7 @@ export function ReelCard({ video, isActive, isMuted, onToggleMute }: ReelCardPro
             }
 
             console.log("Autoplay failed with error:", error);
+            setShowPlayIcon(true);
 
             // Handle browser autoplay policy prevention
             if (error.name === "NotAllowedError") {
@@ -61,6 +62,7 @@ export function ReelCard({ video, isActive, isMuted, onToggleMute }: ReelCardPro
                 })
                 .catch((err) => {
                   console.error("Autoplay failed even with mute:", err);
+                  setShowPlayIcon(true);
                 });
             }
           });
@@ -113,12 +115,12 @@ export function ReelCard({ video, isActive, isMuted, onToggleMute }: ReelCardPro
   };
 
   return (
-    <div className="relative h-full w-full bg-black flex items-center justify-center">
+    <div className="relative h-full w-full bg-black">
       {/* Video - Contained to show full video without cropping */}
       <video
         ref={videoRef}
         src={video.url}
-        className="max-h-full max-w-full w-auto h-auto object-contain"
+        className="absolute inset-0 h-full w-full object-contain pointer-events-auto"
         loop
         playsInline
         preload="auto"
