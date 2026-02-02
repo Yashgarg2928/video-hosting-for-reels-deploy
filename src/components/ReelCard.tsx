@@ -22,22 +22,35 @@ export function ReelCard({ video, isActive, isMuted, onToggleMute }: ReelCardPro
   const [showPlayButton, setShowPlayButton] = useState(true);
   const [debugInfo, setDebugInfo] = useState("Init");
 
-  // Simple play function with debugging
-  const playVideo = async () => {
+  // Simple play function with debugging and retry mechanism for iOS
+  const playVideo = async (retryCount = 0) => {
     const videoEl = videoRef.current;
     if (!videoEl) {
       setDebugInfo("No video element");
       return;
     }
 
-    setDebugInfo("Attempting play...");
+    setDebugInfo(`Attempting play (try ${retryCount + 1})...`);
 
     try {
-      // Always ensure muted for iOS
+      // Always ensure muted for iOS autoplay
       videoEl.muted = true;
 
-      // Wait a tick for the DOM to update
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Ensure video is ready to play
+      if (videoEl.readyState < 2) {
+        setDebugInfo("Waiting for video ready...");
+        await new Promise<void>((resolve) => {
+          const onCanPlay = () => {
+            videoEl.removeEventListener('canplay', onCanPlay);
+            resolve();
+          };
+          videoEl.addEventListener('canplay', onCanPlay);
+          videoEl.load();
+        });
+      }
+
+      // Small delay for iOS to properly initialize
+      await new Promise(resolve => setTimeout(resolve, 50));
 
       const playPromise = videoEl.play();
 
@@ -53,8 +66,16 @@ export function ReelCard({ video, isActive, isMuted, onToggleMute }: ReelCardPro
         }
       }
     } catch (error: any) {
-      setDebugInfo(`Error: ${error.name} - ${error.message}`);
       console.error("Play error:", error);
+
+      // Retry a few times for iOS
+      if (retryCount < 2 && error.name === 'NotAllowedError') {
+        setDebugInfo(`Retrying... (${retryCount + 1})`);
+        setTimeout(() => playVideo(retryCount + 1), 500);
+        return;
+      }
+
+      setDebugInfo(`Tap to play`);
       setShowPlayButton(true);
       setIsPlaying(false);
     }
@@ -136,7 +157,8 @@ export function ReelCard({ video, isActive, isMuted, onToggleMute }: ReelCardPro
         loop
         playsInline
         muted
-        preload="metadata"
+        autoPlay
+        preload="auto"
         poster={posterUrl}
         onTimeUpdate={handleTimeUpdate}
         onError={handleVideoError}
@@ -150,7 +172,8 @@ export function ReelCard({ video, isActive, isMuted, onToggleMute }: ReelCardPro
           "webkit-playsinline": "true",
           "x5-playsinline": "true",
           "x5-video-player-type": "h5",
-          "x5-video-player-fullscreen": "false"
+          "x5-video-player-fullscreen": "false",
+          "autoplay": "autoplay"
         } as any}
       />
 
