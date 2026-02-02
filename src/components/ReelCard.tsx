@@ -22,7 +22,13 @@ export function ReelCard({ video, isActive, isMuted, onToggleMute }: ReelCardPro
   const [showPlayButton, setShowPlayButton] = useState(true);
   const [debugInfo, setDebugInfo] = useState("Init");
 
-  // Simple play function - no retries to avoid loops
+  // Detect iOS devices
+  const isIOS = () => {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  };
+
+  // Simple play function
   const playVideo = async () => {
     const videoEl = videoRef.current;
     if (!videoEl) {
@@ -33,7 +39,7 @@ export function ReelCard({ video, isActive, isMuted, onToggleMute }: ReelCardPro
     setDebugInfo("Attempting play...");
 
     try {
-      // Always ensure muted for iOS autoplay
+      // Always ensure muted for autoplay
       videoEl.muted = true;
 
       const playPromise = videoEl.play();
@@ -84,11 +90,17 @@ export function ReelCard({ video, isActive, isMuted, onToggleMute }: ReelCardPro
     if (!videoEl) return;
 
     if (isActive) {
-      // Small delay before attempting autoplay
-      const timer = setTimeout(() => {
-        playVideo();
-      }, 300);
-      return () => clearTimeout(timer);
+      // Only autoplay on non-iOS devices
+      if (isIOS()) {
+        setDebugInfo("Tap to play");
+        setShowPlayButton(true);
+      } else {
+        // Autoplay on other devices (Android, Desktop)
+        const timer = setTimeout(() => {
+          playVideo();
+        }, 300);
+        return () => clearTimeout(timer);
+      }
     } else {
       videoEl.pause();
       videoEl.currentTime = 0;
@@ -133,7 +145,6 @@ export function ReelCard({ video, isActive, isMuted, onToggleMute }: ReelCardPro
         loop
         playsInline
         muted
-        autoPlay
         preload="auto"
         poster={posterUrl}
         onTimeUpdate={handleTimeUpdate}
@@ -148,8 +159,7 @@ export function ReelCard({ video, isActive, isMuted, onToggleMute }: ReelCardPro
           "webkit-playsinline": "true",
           "x5-playsinline": "true",
           "x5-video-player-type": "h5",
-          "x5-video-player-fullscreen": "false",
-          "autoplay": "autoplay"
+          "x5-video-player-fullscreen": "false"
         } as any}
       />
 
