@@ -43,11 +43,11 @@ export function App() {
   }
 
   return (
-    <div className="h-screen w-screen bg-black overflow-hidden">
+    <div className="h-[100dvh] w-full bg-black overflow-hidden relative">
       {/* Reels Container - Full Screen */}
       <div
         ref={containerRef}
-        className="h-full w-full overflow-y-scroll snap-y snap-mandatory scrollbar-hide"
+        className="h-full w-full overflow-y-scroll snap-y snap-mandatory scrollbar-hide touch-pan-y"
         style={{ scrollSnapType: "y mandatory" }}
       >
         {reels.map((reel, index) => (

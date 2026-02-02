@@ -164,7 +164,7 @@ export function ReelCard({ video, isActive, isMuted, onToggleMute }: ReelCardPro
       </button>
 
       {/* Bottom Info - Username & Description */}
-      <div className="absolute bottom-4 left-4 right-16 z-10 text-white">
+      <div className="absolute bottom-4 left-4 right-16 z-10 text-white pointer-events-none">
         <p className="font-bold text-lg drop-shadow-lg">@{video.username}</p>
         <p className="text-sm mt-1 line-clamp-2 drop-shadow-md opacity-90">{video.description}</p>
       </div>
