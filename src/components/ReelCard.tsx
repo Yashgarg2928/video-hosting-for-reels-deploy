@@ -121,6 +121,7 @@ export function ReelCard({ video, isActive, isMuted, onToggleMute }: ReelCardPro
         className="max-h-full max-w-full w-auto h-auto object-contain"
         loop
         playsInline
+        preload="auto"
         muted={isMuted}
         onClick={togglePlay}
         onTimeUpdate={handleTimeUpdate}
