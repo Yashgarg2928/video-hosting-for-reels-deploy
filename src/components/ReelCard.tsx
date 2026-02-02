@@ -22,37 +22,19 @@ export function ReelCard({ video, isActive, isMuted, onToggleMute }: ReelCardPro
   const [showPlayButton, setShowPlayButton] = useState(true);
   const [debugInfo, setDebugInfo] = useState("Init");
 
-  // Simple play function with debugging and retry mechanism for iOS
-  const playVideo = async (retryCount = 0) => {
+  // Simple play function - no retries to avoid loops
+  const playVideo = async () => {
     const videoEl = videoRef.current;
     if (!videoEl) {
       setDebugInfo("No video element");
       return;
     }
 
-    setDebugInfo(`Attempting play (try ${retryCount + 1})...`);
+    setDebugInfo("Attempting play...");
 
     try {
       // Always ensure muted for iOS autoplay
       videoEl.muted = true;
-
-      // Wait for video to be ready if not already
-      if (videoEl.readyState < 2) {
-        setDebugInfo("Waiting for video ready...");
-        await new Promise<void>((resolve) => {
-          const onCanPlay = () => {
-            videoEl.removeEventListener('canplay', onCanPlay);
-            resolve();
-          };
-          videoEl.addEventListener('canplay', onCanPlay);
-          // Don't call load() - it causes error 4 if video is already loading
-          // Set a timeout in case canplay never fires
-          setTimeout(() => {
-            videoEl.removeEventListener('canplay', onCanPlay);
-            resolve();
-          }, 2000);
-        });
-      }
 
       const playPromise = videoEl.play();
 
@@ -69,15 +51,7 @@ export function ReelCard({ video, isActive, isMuted, onToggleMute }: ReelCardPro
       }
     } catch (error: any) {
       console.error("Play error:", error);
-
-      // Retry a few times for iOS
-      if (retryCount < 2 && error.name === 'NotAllowedError') {
-        setDebugInfo(`Retrying... (${retryCount + 1})`);
-        setTimeout(() => playVideo(retryCount + 1), 500);
-        return;
-      }
-
-      setDebugInfo(`Tap to play`);
+      setDebugInfo("Tap to play");
       setShowPlayButton(true);
       setIsPlaying(false);
     }
