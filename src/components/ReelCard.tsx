@@ -36,7 +36,7 @@ export function ReelCard({ video, isActive, isMuted, onToggleMute }: ReelCardPro
       // Always ensure muted for iOS autoplay
       videoEl.muted = true;
 
-      // Ensure video is ready to play
+      // Wait for video to be ready if not already
       if (videoEl.readyState < 2) {
         setDebugInfo("Waiting for video ready...");
         await new Promise<void>((resolve) => {
@@ -45,12 +45,14 @@ export function ReelCard({ video, isActive, isMuted, onToggleMute }: ReelCardPro
             resolve();
           };
           videoEl.addEventListener('canplay', onCanPlay);
-          videoEl.load();
+          // Don't call load() - it causes error 4 if video is already loading
+          // Set a timeout in case canplay never fires
+          setTimeout(() => {
+            videoEl.removeEventListener('canplay', onCanPlay);
+            resolve();
+          }, 2000);
         });
       }
-
-      // Small delay for iOS to properly initialize
-      await new Promise(resolve => setTimeout(resolve, 50));
 
       const playPromise = videoEl.play();
 
