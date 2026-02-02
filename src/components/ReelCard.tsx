@@ -16,6 +16,7 @@ interface ReelCardProps {
 
 export function ReelCard({ video, isActive, isMuted, onToggleMute }: ReelCardProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const posterUrl = video.url.replace(/\.mp4$/, ".jpg");
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [showPlayIcon, setShowPlayIcon] = useState(false);
@@ -124,6 +125,7 @@ export function ReelCard({ video, isActive, isMuted, onToggleMute }: ReelCardPro
         loop
         playsInline
         preload="auto"
+        poster={posterUrl}
         muted={isMuted}
         onClick={togglePlay}
         onTimeUpdate={handleTimeUpdate}
@@ -175,6 +177,11 @@ export function ReelCard({ video, isActive, isMuted, onToggleMute }: ReelCardPro
       {/* Gradient Overlays for better text readability */}
       <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/40 to-transparent pointer-events-none" />
       <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
+
+      {/* Debug Overlay */}
+      <div className="absolute top-16 left-4 bg-black/50 text-white text-[10px] p-1 z-50 pointer-events-none">
+        Status: {isPlaying ? "Playing" : "Paused"} | Muted: {isMuted ? "Yes" : "No"}
+      </div>
     </div>
   );
 }
