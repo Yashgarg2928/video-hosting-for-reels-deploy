@@ -104,7 +104,9 @@ export function ReelCard({ video, isActive, isMuted, onToggleMute }: ReelCardPro
       videoEl.play().then(() => {
         setIsPlaying(true);
         setShowPlayIcon(false);
-      }).catch(() => { });
+      }).catch((error) => {
+        console.error("Play failed:", error);
+      });
     }
   };
 
@@ -134,7 +136,7 @@ export function ReelCard({ video, isActive, isMuted, onToggleMute }: ReelCardPro
       {/* Play/Pause Overlay */}
       {showPlayIcon && !isPlaying && isActive && (
         <div
-          className="absolute inset-0 flex items-center justify-center bg-black/10"
+          className="absolute inset-0 z-30 flex items-center justify-center bg-black/10 cursor-pointer"
           onClick={togglePlay}
         >
           <div className="rounded-full bg-black/40 p-5 backdrop-blur-sm">
